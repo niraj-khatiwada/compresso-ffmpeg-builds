@@ -5,10 +5,10 @@
 # The image provides the cross-compiler settings (`FFBUILD_TARGET_FLAGS`, `CC`, ...) & every
 # library's configure option (`FF_CONFIGURE`); options of libraries not in `ALLOWED` are dropped.
 #
-# Env: TARGET (win64 | linux64), VERSION (an FFmpeg release, e.g. 8.0.1). Output: /out
+# Env: TARGET (win64 | linux64), VERSION (an FFmpeg release, e.g. 8.1.3). Output: /out
 set -euo pipefail
 
-# Codecs & hardware encoders CompressO uses (see `src-tauri/src/core/ffmpeg.rs` &
+# Codecs & hardware encoders CompressO uses (see its `src-tauri/src/core/ffmpeg.rs` &
 # `hardware_encoder.rs`). The app only uses ffmpeg's built-in filters.
 ALLOWED=" gpl version3 \
   libx264 libx265 libsvtav1 libaom libvpx libdav1d \
@@ -34,6 +34,9 @@ if [[ "$TARGET" == win64 ]]; then
   CONFIGURE+=(--enable-d3d11va --enable-dxva2)
 fi
 
+# The images' iconv is GNU libiconv (its header renames `iconv_open` to `libiconv_open`), which BtbN's
+# full build links through other libraries (e.g. libxml2); without them, it is linked here (`-liconv`)
+
 cd /tmp
 rm -rf ffmpeg prefix
 git clone --depth 1 --branch "n$VERSION" https://github.com/FFmpeg/FFmpeg.git ffmpeg
@@ -42,7 +45,7 @@ cd ffmpeg
 echo "configure: $FFBUILD_TARGET_FLAGS ${CONFIGURE[*]}"
 # shellcheck disable=SC2086
 ./configure --prefix=/tmp/prefix --pkg-config-flags="--static" $FFBUILD_TARGET_FLAGS "${CONFIGURE[@]}" \
-  --extra-cflags="${FF_CFLAGS:-}" --extra-cxxflags="${FF_CXXFLAGS:-}" --extra-libs="${FF_LIBS:-}" \
+  --extra-cflags="${FF_CFLAGS:-}" --extra-cxxflags="${FF_CXXFLAGS:-}" --extra-libs="${FF_LIBS:-} -liconv" \
   --extra-ldflags="${FF_LDFLAGS:-}" --extra-ldexeflags="${FF_LDEXEFLAGS:-}" \
   --cc="$CC" --cxx="$CXX" --ar="$AR" --ranlib="$RANLIB" --nm="$NM" \
   --extra-version="compresso" || { tail -n 80 ffbuild/config.log; exit 1; }
@@ -64,4 +67,3 @@ cp COPYING.GPLv3 /out/LICENSE-ffmpeg.txt
 grep -m1 "^FFMPEG_CONFIGURATION" config.h > /out/configuration.txt || true
 chmod -R a+rw /out
 ls -la /out
-scripts/ffmpeg/compile.sh
