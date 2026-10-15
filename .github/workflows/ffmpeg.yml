@@ -59,6 +59,8 @@ jobs:
             cp "artifacts/ffmpeg-$target/configuration.txt" "release/configuration-$target.txt"
             cp "artifacts/ffmpeg-$target/image.txt" "release/image-$target.txt"
           done
+          # GitHub refuses empty files
+          find release -type f -empty -print -delete
           cd release
           sha256sum compresso_* > SHA256SUMS
           cat SHA256SUMS
@@ -75,5 +77,5 @@ jobs:
           else
             gh release create "$TAG" release/* -R "$GITHUB_REPOSITORY" \
               --title "FFmpeg $VERSION for CompressO" \
-              --notes "FFmpeg $VERSION & ffprobe for Windows & Linux, built with only the codecs and hardware encoders CompressO uses (see scripts/ffmpeg). Downloaded by \`pnpm binaries:download\`. Licensed under the GPL (LICENSE-ffmpeg.txt)."
+              --notes "FFmpeg $VERSION & ffprobe for Windows & Linux, built with only the codecs and hardware encoders CompressO uses (see scripts/ffmpeg). Licensed under the GPL (LICENSE-ffmpeg.txt)."
           fi
