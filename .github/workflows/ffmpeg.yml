@@ -1,12 +1,13 @@
 # Builds CompressO's ffmpeg & ffprobe for Windows & Linux, with only the codecs & hardware encoders
-# the app uses (see scripts/ffmpeg), and publishes them to a pre-release (e.g. "ffmpeg-8.0.1"), from
-# which `pnpm binaries:download` gets them. Run it from the Actions tab.
+# the app uses (see scripts/ffmpeg), and publishes them to a release (e.g. "ffmpeg-8.1.3"), from
+# which CompressO's `pnpm binaries:download` gets them. Run it from the Actions tab.
 name: Build FFmpeg
 
 on:
   workflow_dispatch:
     inputs:
       version:
+        # 8.1 or newer: the images' SVT-AV1 (4.x) no longer builds with FFmpeg 8.0
         description: FFmpeg release to build (e.g. 8.1.3)
         required: true
         default: "8.1.3"
@@ -63,7 +64,6 @@ jobs:
           cat SHA256SUMS
           ls -la
 
-      # A pre-release, never "latest": the app's updater reads the latest release
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -74,7 +74,6 @@ jobs:
             gh release upload "$TAG" release/* --clobber -R "$GITHUB_REPOSITORY"
           else
             gh release create "$TAG" release/* -R "$GITHUB_REPOSITORY" \
-              --prerelease --latest=false \
               --title "FFmpeg $VERSION for CompressO" \
               --notes "FFmpeg $VERSION & ffprobe for Windows & Linux, built with only the codecs and hardware encoders CompressO uses (see scripts/ffmpeg). Downloaded by \`pnpm binaries:download\`. Licensed under the GPL (LICENSE-ffmpeg.txt)."
           fi
