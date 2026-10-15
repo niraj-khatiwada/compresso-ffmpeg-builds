@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Builds CompressO's ffmpeg & ffprobe for Windows or Linux, in BtbN's FFmpeg-Builds image (its
 # libraries are already compiled there; see `compile.sh`). Needs Docker. Used by
-# `.github/workflows/ffmpeg.yml`; can also run locally.
+# `.github/workflows/ffmpeg.yml`; can also run locally (slow on Apple Silicon, under emulation).
 #
-# Usage: scripts/ffmpeg/build.sh <win64|linux64> <ffmpeg version, e.g. 8.0.1> [output folder]
+# Usage: scripts/ffmpeg/build.sh <win64|linux64> <ffmpeg version, e.g. 8.1.3> [output folder]
 set -euo pipefail
 
 TARGET="$1"
