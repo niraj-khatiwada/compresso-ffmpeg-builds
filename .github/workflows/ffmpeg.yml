@@ -1,0 +1,80 @@
+# Builds CompressO's ffmpeg & ffprobe for Windows & Linux, with only the codecs & hardware encoders
+# the app uses (see scripts/ffmpeg), and publishes them to a pre-release (e.g. "ffmpeg-8.0.1"), from
+# which `pnpm binaries:download` gets them. Run it from the Actions tab.
+name: Build FFmpeg
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: FFmpeg release to build (e.g. 8.0.1)
+        required: true
+        default: "8.0.1"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [win64, linux64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+
+      - name: Build
+        env:
+          TARGET: ${{ matrix.target }}
+          VERSION: ${{ inputs.version }}
+        run: bash scripts/ffmpeg/build.sh "$TARGET" "$VERSION" "$PWD/out/$TARGET"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ffmpeg-${{ matrix.target }}
+          path: out/${{ matrix.target }}
+          if-no-files-found: error
+
+  release:
+    name: Publish
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare the files
+        run: |
+          mkdir release
+          cp artifacts/*/compresso_* release/
+          cp artifacts/ffmpeg-linux64/LICENSE-ffmpeg.txt release/
+          for target in win64 linux64; do
+            cp "artifacts/ffmpeg-$target/configuration.txt" "release/configuration-$target.txt"
+            cp "artifacts/ffmpeg-$target/image.txt" "release/image-$target.txt"
+          done
+          cd release
+          sha256sum compresso_* > SHA256SUMS
+          cat SHA256SUMS
+          ls -la
+
+      # A pre-release, never "latest": the app's updater reads the latest release
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ffmpeg-${{ inputs.version }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release upload "$TAG" release/* --clobber -R "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" release/* -R "$GITHUB_REPOSITORY" \
+              --prerelease --latest=false \
+              --title "FFmpeg $VERSION for CompressO" \
+              --notes "FFmpeg $VERSION & ffprobe for Windows & Linux, built with only the codecs and hardware encoders CompressO uses (see scripts/ffmpeg). Downloaded by \`pnpm binaries:download\`. Licensed under the GPL (LICENSE-ffmpeg.txt)."
+          fi
