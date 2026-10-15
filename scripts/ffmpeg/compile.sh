@@ -64,6 +64,7 @@ cp "/tmp/prefix/bin/ffmpeg$EXT" "/out/compresso_ffmpeg-$SUFFIX"
 cp "/tmp/prefix/bin/ffprobe$EXT" "/out/compresso_ffprobe-$SUFFIX"
 cp COPYING.GPLv3 /out/LICENSE-ffmpeg.txt
 # What it was built with, for the release
-grep -m1 "^FFMPEG_CONFIGURATION" config.h > /out/configuration.txt || true
+# (`#define FFMPEG_CONFIGURATION "..."` in config.h)
+sed -n 's/^#define FFMPEG_CONFIGURATION "\(.*\)"$/\1/p' config.h > /out/configuration.txt
 chmod -R a+rw /out
 ls -la /out
